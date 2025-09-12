@@ -1,5 +1,5 @@
 # Minimal Nixpacks configuration for Laravel
-providers = ["php", "nodejs"]
+providers = ["php", "node"]
 
 [variables]
 PHP_VERSION = "8.2"
