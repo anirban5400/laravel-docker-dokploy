@@ -1,3 +1,124 @@
-# Ultra-simple Nixpacks configuration for Laravel
+[variables]
+# PHP Configuration
+PHP_VERSION = "8.2"
+COMPOSER_VERSION = "2"
+NODE_VERSION = "20"
+
+# Laravel Configuration
+NIXPACKS_BUILD_CMD = "composer install --no-dev --optimize-autoloader && npm ci && npm run build"
+NIXPACKS_START_CMD = "supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+
+[phases.setup]
+dependsOn = ["install"]
+
+[phases.install]
+dependsOn = []
+
+[phases.build]
+dependsOn = ["install"]
+
+providers = ["php", "node"]
+
+
+[apt]
+# System packages needed for Laravel, Reverb, Horizon, and database connections
+packages = [
+    "supervisor",
+    "nginx",
+    "curl",
+    "zip",
+    "unzip",
+    "git",
+    "libpng-dev",
+    "libjpeg-dev",
+    "libfreetype6-dev",
+    "libzip-dev",
+    "libicu-dev",
+    "libonig-dev",
+    "libxml2-dev",
+    "libpq-dev",
+    "redis-tools",
+    "libssl-dev",
+    "pkg-config",
+    "libsasl2-dev"
+]
+
+[env]
+# Application Environment
+APP_ENV = "production"
+APP_DEBUG = "false"
+LOG_CHANNEL = "stderr"
+LOG_LEVEL = "error"
+
+# Cache and Session
+CACHE_STORE = "redis"
+SESSION_DRIVER = "redis"
+
+# Queue Configuration
+QUEUE_CONNECTION = "redis"
+
+# Broadcasting
+BROADCAST_CONNECTION = "reverb"
+
+# Reverb Configuration
+REVERB_SERVER_HOST = "0.0.0.0"
+REVERB_SERVER_PORT = "8080"
+
+# PHP Configuration
+PHP_MEMORY_LIMIT = "256M"
+PHP_MAX_EXECUTION_TIME = "300"
+PHP_UPLOAD_MAX_FILESIZE = "64M"
+PHP_POST_MAX_SIZE = "64M"
+
+# Composer Configuration
+COMPOSER_ALLOW_SUPERUSER = "1"
+COMPOSER_NO_INTERACTION = "1"
+
 [start]
-cmd = "php artisan serve --host=0.0.0.0 --port=8080"
+cmd = "supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+
+[build]
+# Custom build commands for Laravel with all services
+cmds = [
+    "pecl install mongodb",
+    "echo 'extension=mongodb.so' >> /usr/local/etc/php/php.ini",
+    "composer install --no-dev --optimize-autoloader --no-interaction",
+    "npm ci --only=production",
+    "npm run build",
+    "php artisan config:cache",
+    "php artisan route:cache",
+    "php artisan view:cache",
+    "mkdir -p /etc/supervisor/conf.d",
+    "cat > /etc/supervisor/conf.d/supervisord.conf << 'EOF'
+[supervisord]
+nodaemon=true
+user=root
+
+[program:php-fpm]
+command=php artisan serve --host=0.0.0.0 --port=80
+autostart=true
+autorestart=true
+user=www-data
+
+[program:laravel-reverb]
+command=php artisan reverb:start --host=0.0.0.0 --port=8080
+directory=/app
+autostart=true
+autorestart=true
+user=www-data
+
+[program:laravel-horizon]
+command=php artisan horizon
+directory=/app
+autostart=true
+autorestart=true
+user=www-data
+
+[program:laravel-queue-worker]
+command=php artisan queue:work --sleep=3 --tries=3
+directory=/app
+autostart=true
+autorestart=true
+user=www-data
+EOF"
+]
