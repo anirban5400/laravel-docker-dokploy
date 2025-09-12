@@ -1,52 +1,11 @@
-# Proper Laravel Nixpacks Configuration with MongoDB and Multiple Services
-# Based on official Nixpacks documentation patterns
-
-# Extend auto-detected PHP provider with Node.js
-providers = ["...", "node"]
+# Ultra-clean Laravel Nixpacks Configuration
+# Avoids all Nix conflicts by using minimal configuration
 
 [variables]
-# Laravel Environment
 APP_ENV = "production"
 APP_DEBUG = "false"
 LOG_CHANNEL = "stderr"
-LOG_LEVEL = "error"
-
-# Cache and Sessions
 CACHE_STORE = "redis"
 SESSION_DRIVER = "redis"
 QUEUE_CONNECTION = "redis"
-
-# Broadcasting
 BROADCAST_CONNECTION = "reverb"
-
-# PHP Configuration
-PHP_MEMORY_LIMIT = "256M"
-PHP_MAX_EXECUTION_TIME = "300"
-
-# Composer Configuration
-COMPOSER_ALLOW_SUPERUSER = "1"
-COMPOSER_NO_INTERACTION = "1"
-
-[phases.setup]
-# Install system packages for MongoDB
-aptPkgs = ["...", "libssl-dev", "pkg-config", "libsasl2-dev"]
-
-[phases.install]
-# Install dependencies and PHP MongoDB extension
-cmds = [
-    "...",
-    "pecl install mongodb",
-    "echo 'extension=mongodb.so' >> /usr/local/etc/php/php.ini"
-]
-
-[phases.build]
-# Build Laravel application
-cmds = [
-    "...",
-    "npm run build",
-    "php artisan config:cache",
-    "php artisan route:cache",
-    "php artisan view:cache"
-]
-
-# Nixpacks will automatically use the Procfile for multiple services
