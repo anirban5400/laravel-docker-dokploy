@@ -4,9 +4,9 @@ PHP_VERSION = "8.2"
 COMPOSER_VERSION = "2"
 NODE_VERSION = "20"
 
-# Laravel Configuration
+# Laravel Configuration - Simplified for Nixpacks
 NIXPACKS_BUILD_CMD = "composer install --no-dev --optimize-autoloader && npm ci && npm run build"
-NIXPACKS_START_CMD = "supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+NIXPACKS_START_CMD = "php artisan serve --host=0.0.0.0 --port=8080"
 
 [phases.setup]
 dependsOn = ["install"]
@@ -25,23 +25,12 @@ php = "ghcr.io/paketo-buildpacks/php:latest"
 nodejs = "ghcr.io/paketo-buildpacks/nodejs:latest"
 
 [apt]
-# System packages needed for Laravel, Reverb, Horizon, and database connections
+# Essential packages for Laravel
 packages = [
-    "supervisor",
-    "nginx",
     "curl",
     "zip",
     "unzip",
-    "git",
-    "libpng-dev",
-    "libjpeg-dev",
-    "libfreetype6-dev",
-    "libzip-dev",
-    "libicu-dev",
-    "libonig-dev",
-    "libxml2-dev",
-    "libpq-dev",
-    "redis-tools"
+    "git"
 ]
 
 [env]
@@ -76,19 +65,15 @@ COMPOSER_ALLOW_SUPERUSER = "1"
 COMPOSER_NO_INTERACTION = "1"
 
 [start]
-cmd = "supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+cmd = "php artisan serve --host=0.0.0.0 --port=8080"
 
 [build]
-# Custom build commands for Laravel with all services
+# Simplified build commands for Laravel
 cmds = [
     "composer install --no-dev --optimize-autoloader --no-interaction",
     "npm ci --only=production",
     "npm run build",
     "php artisan config:cache",
     "php artisan route:cache",
-    "php artisan view:cache",
-    "mkdir -p /etc/supervisor/conf.d",
-    "cp docker/supervisord.conf /etc/supervisor/conf.d/",
-    "cp docker/nginx.conf /etc/nginx/nginx.conf",
-    "cp docker/php.ini /usr/local/etc/php/php.ini"
+    "php artisan view:cache"
 ]
