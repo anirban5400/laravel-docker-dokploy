@@ -17,9 +17,7 @@ dependsOn = []
 [phases.build]
 dependsOn = ["install"]
 
-[providers]
-php = true
-nodejs = true
+providers = ["php", "nodejs"]
 
 [buildpacks]
 # Use custom buildpack for Laravel with Reverb and Horizon
