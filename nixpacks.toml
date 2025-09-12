@@ -89,36 +89,34 @@ cmds = [
     "php artisan route:cache",
     "php artisan view:cache",
     "mkdir -p /etc/supervisor/conf.d",
-    "cat > /etc/supervisor/conf.d/supervisord.conf << 'EOF'
-[supervisord]
-nodaemon=true
-user=root
-
-[program:php-fpm]
-command=php artisan serve --host=0.0.0.0 --port=80
-autostart=true
-autorestart=true
-user=www-data
-
-[program:laravel-reverb]
-command=php artisan reverb:start --host=0.0.0.0 --port=8080
-directory=/app
-autostart=true
-autorestart=true
-user=www-data
-
-[program:laravel-horizon]
-command=php artisan horizon
-directory=/app
-autostart=true
-autorestart=true
-user=www-data
-
-[program:laravel-queue-worker]
-command=php artisan queue:work --sleep=3 --tries=3
-directory=/app
-autostart=true
-autorestart=true
-user=www-data
-EOF"
+    "echo '[supervisord]' > /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'nodaemon=true' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'user=root' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo '' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo '[program:php-fpm]' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'command=php artisan serve --host=0.0.0.0 --port=80' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'user=www-data' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo '' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo '[program:laravel-reverb]' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'command=php artisan reverb:start --host=0.0.0.0 --port=8080' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'directory=/app' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'user=www-data' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo '' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo '[program:laravel-horizon]' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'command=php artisan horizon' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'directory=/app' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'user=www-data' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo '' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo '[program:laravel-queue-worker]' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'command=php artisan queue:work --sleep=3 --tries=3' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'directory=/app' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf",
+    "echo 'user=www-data' >> /etc/supervisor/conf.d/supervisord.conf"
 ]
