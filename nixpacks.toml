@@ -1,0 +1,96 @@
+[variables]
+# PHP Configuration
+PHP_VERSION = "8.2"
+COMPOSER_VERSION = "2"
+NODE_VERSION = "20"
+
+# Laravel Configuration
+NIXPACKS_BUILD_CMD = "composer install --no-dev --optimize-autoloader && npm ci && npm run build"
+NIXPACKS_START_CMD = "supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+
+[phases.setup]
+dependsOn = ["install"]
+
+[phases.install]
+dependsOn = []
+
+[phases.build]
+dependsOn = ["install"]
+
+[providers]
+php = true
+nodejs = true
+
+[buildpacks]
+# Use custom buildpack for Laravel with Reverb and Horizon
+php = "ghcr.io/paketo-buildpacks/php:latest"
+nodejs = "ghcr.io/paketo-buildpacks/nodejs:latest"
+
+[apt]
+# System packages needed for Laravel, Reverb, Horizon, and database connections
+packages = [
+    "supervisor",
+    "nginx",
+    "curl",
+    "zip",
+    "unzip",
+    "git",
+    "libpng-dev",
+    "libjpeg-dev",
+    "libfreetype6-dev",
+    "libzip-dev",
+    "libicu-dev",
+    "libonig-dev",
+    "libxml2-dev",
+    "libpq-dev",
+    "redis-tools"
+]
+
+[env]
+# Application Environment
+APP_ENV = "production"
+APP_DEBUG = "false"
+LOG_CHANNEL = "stderr"
+LOG_LEVEL = "error"
+
+# Cache and Session
+CACHE_STORE = "redis"
+SESSION_DRIVER = "redis"
+
+# Queue Configuration
+QUEUE_CONNECTION = "redis"
+
+# Broadcasting
+BROADCAST_CONNECTION = "reverb"
+
+# Reverb Configuration
+REVERB_SERVER_HOST = "0.0.0.0"
+REVERB_SERVER_PORT = "8080"
+
+# PHP Configuration
+PHP_MEMORY_LIMIT = "256M"
+PHP_MAX_EXECUTION_TIME = "300"
+PHP_UPLOAD_MAX_FILESIZE = "64M"
+PHP_POST_MAX_SIZE = "64M"
+
+# Composer Configuration
+COMPOSER_ALLOW_SUPERUSER = "1"
+COMPOSER_NO_INTERACTION = "1"
+
+[start]
+cmd = "supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+
+[build]
+# Custom build commands for Laravel with all services
+cmds = [
+    "composer install --no-dev --optimize-autoloader --no-interaction",
+    "npm ci --only=production",
+    "npm run build",
+    "php artisan config:cache",
+    "php artisan route:cache",
+    "php artisan view:cache",
+    "mkdir -p /etc/supervisor/conf.d",
+    "cp docker/supervisord.conf /etc/supervisor/conf.d/",
+    "cp docker/nginx.conf /etc/nginx/nginx.conf",
+    "cp docker/php.ini /usr/local/etc/php/php.ini"
+]

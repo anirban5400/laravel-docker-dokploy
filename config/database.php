@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => env('DB_CONNECTION', 'mysql'),
 
     /*
     |--------------------------------------------------------------------------
@@ -111,6 +111,23 @@ return [
             'prefix_indexes' => true,
             // 'encrypt' => env('DB_ENCRYPT', 'yes'),
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
+        ],
+
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'host' => env('MONGODB_HOST', '127.0.0.1'),
+            'port' => env('MONGODB_PORT', 27017),
+            'database' => env('MONGODB_DATABASE', 'laravel_mongodb'),
+            'username' => env('MONGODB_USERNAME', ''),
+            'password' => env('MONGODB_PASSWORD', ''),
+            'options' => [
+                'appName' => env('APP_NAME', 'Laravel'),
+                'authSource' => env('MONGODB_AUTH_SOURCE', 'admin'),
+                'ssl' => env('MONGODB_SSL', false),
+                'replicaSet' => env('MONGODB_REPLICA_SET'),
+                'connectTimeoutMS' => env('MONGODB_CONNECT_TIMEOUT_MS', 10000),
+                'serverSelectionTimeoutMS' => env('MONGODB_SERVER_SELECTION_TIMEOUT_MS', 5000),
+            ],
         ],
 
     ],

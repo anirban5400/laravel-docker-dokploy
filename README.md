@@ -1,61 +1,152 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Docker Dokploy
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A complete Laravel application with **Reverb (WebSockets)**, **Horizon (Queue Management)**, and **Queue Workers** ready for deployment on Dokploy.
 
-## About Laravel
+## 🚀 Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- ✅ **Laravel 12** with PHP 8.2
+- ✅ **Laravel Reverb** - Real-time WebSocket communication
+- ✅ **Laravel Horizon** - Queue monitoring dashboard
+- ✅ **Queue Workers** - Background job processing
+- ✅ **External MySQL & MongoDB** support
+- ✅ **Redis** for caching, sessions, and queues
+- ✅ **Docker & Nixpacks** deployment options
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📋 Quick Start
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 1. Set Your Domain
+Edit `.env.nixpacks.production` and change:
+```env
+PRODUCTION_DOMAIN=your-domain.com
+```
+All other domain references will automatically update!
 
-## Learning Laravel
+### 2. Set Database Connections
+Replace these placeholders with your actual database details:
+```env
+# MySQL
+DB_HOST=your-mysql-server.com
+DB_DATABASE=your_database
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+# MongoDB
+MONGODB_HOST=your-mongodb-server.com
+MONGODB_DATABASE=your_mongodb_db
+MONGODB_USERNAME=your_mongo_user
+MONGODB_PASSWORD=your_mongo_password
+```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### 3. Deploy on Dokploy
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+#### Option A: Nixpacks (Recommended - Easier)
+1. Create application in Dokploy
+2. Choose **"Nixpacks"** build method
+3. Copy all variables from `.env.nixpacks.production` to Dokploy environment variables
+4. Deploy!
 
-## Laravel Sponsors
+#### Option B: Docker Compose
+1. Create Docker Compose application in Dokploy
+2. Upload `docker-compose.production.yml`
+3. Set environment variables in Dokploy (same as above)
+4. Deploy!
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 🌐 Access Your Application
 
-### Premium Partners
+After deployment:
+- **Main App**: `https://your-domain.com`
+- **Horizon Dashboard**: `https://your-domain.com/horizon`
+- **Health Check**: `https://your-domain.com/up`
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## 🔑 Generated Keys (Already Set)
 
-## Contributing
+Your application comes with pre-generated secure keys:
+- ✅ **APP_KEY**: `base64:d382dhqJQnQwKDdHshiAeWJPrXV5QrYjKt8nA+k7fUw=`
+- ✅ **REVERB_APP_KEY**: `2zqXf/k6se11XifOcwsDtgBcVILKpW3I4rH8zPOeNaw=`
+- ✅ **REVERB_APP_SECRET**: `eYl3aY/WfwP38wg6wzSKduxsOZqQx7pkemwD5qpYfgI=`
+- ✅ **REDIS_PASSWORD**: `bBv4P99NGkd0ETb2L8lA2KKEgkZ8NB4TPnLRLZtxrYw=`
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 💡 What's Running
 
-## Code of Conduct
+Your deployed application includes:
+- **Nginx** - Web server
+- **PHP-FPM** - Laravel application
+- **Laravel Reverb** - WebSocket server (port 8080)
+- **Laravel Horizon** - Queue management
+- **Queue Workers** - 2 background workers
+- **Task Scheduler** - Cron jobs
+- **Redis** - Caching and queues
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## 🧪 Test WebSocket Connection
 
-## Security Vulnerabilities
+```javascript
+// In browser console
+const ws = new WebSocket('wss://your-domain.com/app/your-reverb-key?protocol=7&client=js&version=8.4.0-rc2');
+ws.onopen = () => console.log('WebSocket connected!');
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## 🔧 Send Test Email Job
 
-## License
+```php
+// In Laravel Tinker or controller
+App\Jobs\ProcessEmailQueue::dispatch('test@example.com', 'Test Subject', 'Hello World!');
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 📊 Monitor Your Application
+
+- **Queue Status**: Visit `/horizon` to see queue workers and job processing
+- **Application Logs**: Check Dokploy application logs
+- **Health Check**: Visit `/up` to verify application status
+
+## 🐛 Troubleshooting
+
+### WebSocket Not Working?
+- Check `REVERB_HOST` matches your domain exactly
+- Ensure `REVERB_PORT=443` and `REVERB_SCHEME=https`
+
+### Queue Jobs Not Processing?
+- Visit `/horizon` to check worker status
+- Verify Redis connection settings
+
+### Database Connection Issues?
+- Verify external database credentials
+- Check if database accepts connections from Dokploy server IP
+
+## 🔄 Local Development
+
+```bash
+# Start development environment
+docker-compose up -d
+
+# Access services
+# App: http://localhost
+# WebSocket: ws://localhost:6001
+# Horizon: http://localhost/horizon
+```
+
+## 📁 File Structure
+
+```
+├── 🐳 Docker files
+│   ├── Dockerfile
+│   ├── docker-compose.yml (development)
+│   └── docker-compose.production.yml (Dokploy)
+├── 📦 Nixpacks
+│   ├── nixpacks.toml
+│   └── .env.nixpacks.production
+├── 🎯 Laravel app
+│   ├── app/Events/MessageSent.php (WebSocket example)
+│   ├── app/Jobs/ProcessEmailQueue.php (Queue example)
+│   └── config/reverb.php & horizon.php
+└── 📚 This README.md
+```
+
+## 🎉 That's It!
+
+Your Laravel application with WebSockets, Queue Management, and Background Workers is ready for production deployment on Dokploy!
+
+**Need help?** Check the application logs in Dokploy or visit `/horizon` for queue monitoring.
+
+---
+
+**Built with ❤️ for Dokploy deployment**
