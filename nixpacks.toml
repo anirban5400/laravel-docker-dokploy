@@ -1,50 +1,11 @@
+# Nixpacks configuration for Laravel with Reverb, Horizon, and Queue Workers
+# Based on official Nixpacks documentation patterns
+
+# Extend auto-detected providers with Node.js for asset building
+providers = ["...", "node"]
+
 [variables]
-# PHP Configuration
-PHP_VERSION = "8.2"
-COMPOSER_VERSION = "2"
-NODE_VERSION = "20"
-
-# Laravel Configuration
-NIXPACKS_BUILD_CMD = "composer install --no-dev --optimize-autoloader && npm ci && npm run build"
-NIXPACKS_START_CMD = "supervisord -c /etc/supervisor/conf.d/supervisord.conf"
-
-[phases.setup]
-dependsOn = ["install"]
-
-[phases.install]
-dependsOn = []
-
-[phases.build]
-dependsOn = ["install"]
-
-providers = ["php", "node"]
-
-
-[apt]
-# System packages needed for Laravel, Reverb, Horizon, and database connections
-packages = [
-    "supervisor",
-    "nginx",
-    "curl",
-    "zip",
-    "unzip",
-    "git",
-    "libpng-dev",
-    "libjpeg-dev",
-    "libfreetype6-dev",
-    "libzip-dev",
-    "libicu-dev",
-    "libonig-dev",
-    "libxml2-dev",
-    "libpq-dev",
-    "redis-tools",
-    "libssl-dev",
-    "pkg-config",
-    "libsasl2-dev"
-]
-
-[env]
-# Application Environment
+# Environment variables for production
 APP_ENV = "production"
 APP_DEBUG = "false"
 LOG_CHANNEL = "stderr"
@@ -60,10 +21,6 @@ QUEUE_CONNECTION = "redis"
 # Broadcasting
 BROADCAST_CONNECTION = "reverb"
 
-# Reverb Configuration
-REVERB_SERVER_HOST = "0.0.0.0"
-REVERB_SERVER_PORT = "8080"
-
 # PHP Configuration
 PHP_MEMORY_LIMIT = "256M"
 PHP_MAX_EXECUTION_TIME = "300"
@@ -74,49 +31,28 @@ PHP_POST_MAX_SIZE = "64M"
 COMPOSER_ALLOW_SUPERUSER = "1"
 COMPOSER_NO_INTERACTION = "1"
 
-[start]
-cmd = "supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+[phases.setup]
+# Install additional system packages for Laravel, MongoDB, and process management
+aptPkgs = ["...", "supervisor", "libssl-dev", "pkg-config", "libsasl2-dev"]
 
-[build]
-# Custom build commands for Laravel with all services
+[phases.install]
+# Install PHP MongoDB extension during install phase
 cmds = [
+    "...",
     "pecl install mongodb",
-    "echo 'extension=mongodb.so' >> /usr/local/etc/php/php.ini",
-    "composer install --no-dev --optimize-autoloader --no-interaction",
-    "npm ci --only=production",
+    "echo 'extension=mongodb.so' >> /usr/local/etc/php/php.ini"
+]
+
+[phases.build]
+# Build commands for Laravel with asset compilation
+cmds = [
+    "...",
     "npm run build",
     "php artisan config:cache",
     "php artisan route:cache",
-    "php artisan view:cache",
-    "mkdir -p /etc/supervisor/conf.d",
-    "echo '[supervisord]' > /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'nodaemon=true' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'user=root' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo '' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo '[program:php-fpm]' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'command=php artisan serve --host=0.0.0.0 --port=80' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'user=www-data' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo '' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo '[program:laravel-reverb]' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'command=php artisan reverb:start --host=0.0.0.0 --port=8080' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'directory=/app' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'user=www-data' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo '' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo '[program:laravel-horizon]' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'command=php artisan horizon' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'directory=/app' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'user=www-data' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo '' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo '[program:laravel-queue-worker]' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'command=php artisan queue:work --sleep=3 --tries=3' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'directory=/app' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf",
-    "echo 'user=www-data' >> /etc/supervisor/conf.d/supervisord.conf"
+    "php artisan view:cache"
 ]
+
+[start]
+# Use a simple start script to manage multiple processes
+cmd = "bash -c 'php artisan serve --host=0.0.0.0 --port=80 & php artisan reverb:start --host=0.0.0.0 --port=8080 & php artisan horizon & php artisan queue:work --daemon & wait'"
