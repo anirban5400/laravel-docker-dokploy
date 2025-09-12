@@ -1,21 +1,19 @@
-# Nixpacks configuration for Laravel with Reverb, Horizon, and Queue Workers
+# Proper Laravel Nixpacks Configuration with MongoDB and Multiple Services
 # Based on official Nixpacks documentation patterns
 
-# Extend auto-detected providers with Node.js for asset building
+# Extend auto-detected PHP provider with Node.js
 providers = ["...", "node"]
 
 [variables]
-# Environment variables for production
+# Laravel Environment
 APP_ENV = "production"
 APP_DEBUG = "false"
 LOG_CHANNEL = "stderr"
 LOG_LEVEL = "error"
 
-# Cache and Session
+# Cache and Sessions
 CACHE_STORE = "redis"
 SESSION_DRIVER = "redis"
-
-# Queue Configuration
 QUEUE_CONNECTION = "redis"
 
 # Broadcasting
@@ -24,19 +22,17 @@ BROADCAST_CONNECTION = "reverb"
 # PHP Configuration
 PHP_MEMORY_LIMIT = "256M"
 PHP_MAX_EXECUTION_TIME = "300"
-PHP_UPLOAD_MAX_FILESIZE = "64M"
-PHP_POST_MAX_SIZE = "64M"
 
 # Composer Configuration
 COMPOSER_ALLOW_SUPERUSER = "1"
 COMPOSER_NO_INTERACTION = "1"
 
 [phases.setup]
-# Install additional system packages for Laravel, MongoDB, and process management
-aptPkgs = ["...", "supervisor", "libssl-dev", "pkg-config", "libsasl2-dev"]
+# Install system packages for MongoDB
+aptPkgs = ["...", "libssl-dev", "pkg-config", "libsasl2-dev"]
 
 [phases.install]
-# Install PHP MongoDB extension during install phase
+# Install dependencies and PHP MongoDB extension
 cmds = [
     "...",
     "pecl install mongodb",
@@ -44,7 +40,7 @@ cmds = [
 ]
 
 [phases.build]
-# Build commands for Laravel with asset compilation
+# Build Laravel application
 cmds = [
     "...",
     "npm run build",
@@ -53,6 +49,4 @@ cmds = [
     "php artisan view:cache"
 ]
 
-[start]
-# Use a simple start script to manage multiple processes
-cmd = "bash -c 'php artisan serve --host=0.0.0.0 --port=80 & php artisan reverb:start --host=0.0.0.0 --port=8080 & php artisan horizon & php artisan queue:work --daemon & wait'"
+# Nixpacks will automatically use the Procfile for multiple services
