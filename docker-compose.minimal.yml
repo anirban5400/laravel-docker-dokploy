@@ -1,9 +1,9 @@
 services:
-  # Main Laravel Application (PHP-FPM)
+  # Main Laravel Application (PHP-FPM) - Using pre-built image
   app:
     build:
       context: .
-      dockerfile: docker/app/Dockerfile.fixed
+      dockerfile: docker/app/Dockerfile.minimal
     container_name: laravel-app
     restart: unless-stopped
     working_dir: /var/www/html

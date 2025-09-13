@@ -1,13 +1,21 @@
 # 🚀 **Simplified Laravel Deployment - Just App + Nginx + Redis**
 
-## ❌ **Problem Solved**
+## ❌ **Problems Solved**
 
-The error you encountered:
+### **Error 1: Composer Package Discovery**
 ```
 Script @php artisan package:discover --ansi handling the post-autoload-dump event returned with error code 1
 ```
+This happens because Laravel tries to run commands before the environment is properly set up.
 
-This happens because Laravel tries to run commands before the environment is properly set up. 
+### **Error 2: PHP Extension Compilation**
+```
+docker-php-ext-configure gd --with-freetype --with-jpeg && docker-php-ext-install ... exit code: 2
+```
+This happens because:
+- **Wrong package manager**: Using `apt-get` (Debian) commands but expecting Alpine packages
+- **Missing dependencies**: Incorrect package names for Debian-based images
+- **Extension conflicts**: Installing all extensions at once can cause compilation failures 
 
 ## ✅ **Simple Solution**
 
@@ -15,9 +23,11 @@ I've created a **simplified setup** with just the essential services:
 
 ### 📁 **Files Created:**
 
-1. **`docker-compose.simple.yml`** - Only Laravel + Nginx + Redis
-2. **`docker/app/Dockerfile.simple`** - Fixed Dockerfile without Laravel command issues
-3. **`docker/app/entrypoint.simple.sh`** - Simplified entrypoint with debug info
+1. **`docker-compose.simple.yml`** - Laravel + Nginx + Redis (using fixed Dockerfile)
+2. **`docker-compose.minimal.yml`** - Same setup but with pre-built PHP image (recommended)
+3. **`docker/app/Dockerfile.fixed`** - Fixed Dockerfile with correct Debian packages
+4. **`docker/app/Dockerfile.minimal`** - Uses pre-built image to avoid compilation issues
+5. **`docker/app/entrypoint.simple.sh`** - Simplified entrypoint with debug info
 
 ### 🎯 **What This Includes:**
 
@@ -38,11 +48,19 @@ I've created a **simplified setup** with just the essential services:
 
 ## 🚀 **Deploy Instructions**
 
-### 1. **Use the Simplified Setup**
+### 1. **Choose Your Setup**
 
-In Dokploy, point to:
+In Dokploy, use one of these files:
+
+**Option A: Pre-built Image (Recommended - Fastest)**
 ```yaml
-# Use this file instead of docker-compose.yml
+# Uses thecodingmachine/php:8.4 with extensions pre-installed
+docker-compose.minimal.yml
+```
+
+**Option B: Custom Build (If you need specific control)**
+```yaml  
+# Builds from scratch with fixed Debian packages
 docker-compose.simple.yml
 ```
 
