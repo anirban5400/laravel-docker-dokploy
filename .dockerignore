@@ -62,10 +62,8 @@ phpunit.xml
 /vendor/bin/pest
 /vendor/bin/pint
 
-# Docker
+# Docker (exclude local development only)
 docker-compose.yml
-docker-compose.*.yml
-Dockerfile
 .dockerignore
 
 # Temporary files

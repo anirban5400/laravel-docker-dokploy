@@ -23,6 +23,8 @@ RUN apk add --no-cache \
     supervisor \
     unzip \
     zip \
+    openssl-dev \
+    cyrus-sasl-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         bcmath \
@@ -34,7 +36,8 @@ RUN apk add --no-cache \
         pdo_pgsql \
         xml \
         zip \
-    && apk del build-base
+        pcntl \
+        sockets
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -51,6 +54,18 @@ RUN apk add --no-cache $PHPIZE_DEPS \
     && docker-php-ext-enable mongodb \
     && apk del $PHPIZE_DEPS
 
+# Copy composer files first for better layer caching
+COPY composer.json composer.lock ./
+
+# Install PHP dependencies first (better for Docker layer caching)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+# Copy package.json files for Node dependencies
+COPY package*.json ./
+
+# Install Node.js dependencies
+RUN npm ci --only=production
+
 # Copy application files
 COPY . .
 
@@ -64,12 +79,11 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Run Composer scripts now that all files are copied
+RUN composer dump-autoload --optimize
 
-# Install Node.js dependencies and build assets
-RUN npm ci --only=production \
-    && npm run build \
+# Build assets
+RUN npm run build \
     && npm cache clean --force
 
 # Create necessary directories
@@ -81,8 +95,8 @@ RUN mkdir -p /var/log/supervisor \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost/up || exit 1
 
-# Expose port
-EXPOSE 80
+# Expose ports
+EXPOSE 80 6001
 
 # Start services using supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
