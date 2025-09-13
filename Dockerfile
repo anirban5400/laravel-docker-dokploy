@@ -4,14 +4,14 @@ FROM php:8.2-fpm-alpine
 # Set working directory
 WORKDIR /var/www/html
 
-# Install system dependencies and PHP extensions
+# Install system dependencies
 RUN apk add --no-cache \
     build-base \
     curl \
     freetype-dev \
     git \
     icu-dev \
-    jpeg-dev \
+    libjpeg-turbo-dev \
     libpng-dev \
     libxml2-dev \
     libzip-dev \
@@ -23,10 +23,11 @@ RUN apk add --no-cache \
     supervisor \
     unzip \
     zip \
-    openssl-dev \
-    cyrus-sasl-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install \
+    openssl-dev
+
+# Configure and install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
         bcmath \
         gd \
         intl \
@@ -49,7 +50,7 @@ RUN apk add --no-cache $PHPIZE_DEPS \
     && apk del $PHPIZE_DEPS
 
 # Install MongoDB extension
-RUN apk add --no-cache $PHPIZE_DEPS \
+RUN apk add --no-cache $PHPIZE_DEPS cyrus-sasl-dev \
     && pecl install mongodb \
     && docker-php-ext-enable mongodb \
     && apk del $PHPIZE_DEPS
