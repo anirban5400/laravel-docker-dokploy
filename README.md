@@ -1,152 +1,229 @@
-# Laravel Docker Dokploy
+# Laravel Docker Dokploy Project
 
-A complete Laravel application with **Reverb (WebSockets)**, **Horizon (Queue Management)**, and **Queue Workers** ready for deployment on Dokploy.
+## 🏗️ **Professional Docker Structure for Laravel**
 
-## 🚀 Features
+This project provides a **robust, debuggable, production-ready Docker setup** for Laravel with:
+- ✅ **PHP 8.4** with all required extensions
+- ✅ **External MySQL & MongoDB clusters** support
+- ✅ **Queue Workers** with Redis backend
+- ✅ **Task Scheduler** (Laravel Cron)
+- ✅ **Reverb WebSocket Server** for real-time features
+- ✅ **Horizon Queue Manager** with dashboard
+- ✅ **Debug breakpoints** in all entrypoints
+- ✅ **Health checks** for zero-downtime deployments
+- ✅ **Dokploy-ready** with Traefik integration
 
-- ✅ **Laravel 12** with PHP 8.2
-- ✅ **Laravel Reverb** - Real-time WebSocket communication
-- ✅ **Laravel Horizon** - Queue monitoring dashboard
-- ✅ **Queue Workers** - Background job processing
-- ✅ **External MySQL & MongoDB** support
-- ✅ **Redis** for caching, sessions, and queues
-- ✅ **Docker & Nixpacks** deployment options
+## 📁 **Project Structure**
 
-## 📋 Quick Start
-
-### 1. Set Your Domain
-Edit `.env.nixpacks.production` and change:
-```env
-PRODUCTION_DOMAIN=your-domain.com
 ```
-All other domain references will automatically update!
-
-### 2. Set Database Connections
-Replace these placeholders with your actual database details:
-```env
-# MySQL
-DB_HOST=your-mysql-server.com
-DB_DATABASE=your_database
-DB_USERNAME=your_username
-DB_PASSWORD=your_password
-
-# MongoDB
-MONGODB_HOST=your-mongodb-server.com
-MONGODB_DATABASE=your_mongodb_db
-MONGODB_USERNAME=your_mongo_user
-MONGODB_PASSWORD=your_mongo_password
+/
+├── docker/
+│   ├── app/                    # Main Laravel Application
+│   │   ├── Dockerfile          # PHP-FPM with all extensions
+│   │   └── entrypoint.sh       # Debug breakpoints & checks
+│   ├── queue/                  # Queue Worker
+│   │   ├── Dockerfile          # Optimized for background jobs
+│   │   └── entrypoint.sh       # Queue-specific health checks
+│   ├── schedule/               # Task Scheduler  
+│   │   ├── Dockerfile          # Cron job processor
+│   │   └── entrypoint.sh       # Scheduler validation
+│   ├── reverb/                 # WebSocket Server
+│   │   ├── Dockerfile          # Reverb WebSocket daemon
+│   │   └── entrypoint.sh       # WebSocket connectivity tests
+│   ├── horizon/                # Queue Manager
+│   │   ├── Dockerfile          # Horizon dashboard & workers
+│   │   └── entrypoint.sh       # Horizon-specific checks
+│   └── nginx/
+│       └── nginx.conf          # Production web server config
+├── docker-compose.yml          # Full production setup
+└── env.production.template     # Environment configuration template
 ```
 
-### 3. Deploy on Dokploy
+## 🚀 **Quick Start**
 
-#### Option A: Nixpacks (Recommended - Easier)
-1. Create application in Dokploy
-2. Choose **"Nixpacks"** build method
-3. Copy all variables from `.env.nixpacks.production` to Dokploy environment variables
+### 1. **Configure Environment**
+```bash
+# Copy and edit the environment template
+cp env.production.template .env
+
+# Generate Laravel application key
+php artisan key:generate
+
+# Generate Reverb keys
+php artisan reverb:install
+```
+
+### 2. **Set Your External Databases**
+Edit `.env` with your external cluster details:
+```env
+# External MySQL Cluster
+DB_HOST=your-mysql-cluster-host
+DB_PORT=3306
+DB_DATABASE=your-database
+DB_USERNAME=your-username
+DB_PASSWORD=your-password
+
+# External MongoDB Cluster
+MONGODB_HOST=your-mongodb-cluster-host
+MONGODB_PORT=27017
+MONGODB_DATABASE=your-mongo-db
+MONGODB_USERNAME=your-mongo-username
+MONGODB_PASSWORD=your-mongo-password
+```
+
+### 3. **Deploy on Dokploy**
+
+#### **Option A: Docker Compose (Recommended)**
+1. In Dokploy, create new service → **Docker Compose**
+2. Point to your `docker-compose.yml`
+3. Set environment variables from your `.env`
 4. Deploy!
 
-#### Option B: Docker Compose
-1. Create Docker Compose application in Dokploy
-2. Upload `docker-compose.production.yml`
-3. Set environment variables in Dokploy (same as above)
-4. Deploy!
+#### **Option B: Individual Services**
+Deploy each service separately for maximum control:
+- Main App: `docker/app/`
+- Queue Worker: `docker/queue/`
+- Scheduler: `docker/schedule/`
+- Reverb: `docker/reverb/`
+- Horizon: `docker/horizon/`
 
-## 🌐 Access Your Application
+## 🔧 **What Each Service Does**
 
-After deployment:
-- **Main App**: `https://your-domain.com`
-- **Horizon Dashboard**: `https://your-domain.com/horizon`
-- **Health Check**: `https://your-domain.com/up`
+### **🏠 Main App (`app`)**
+- **PHP 8.4-FPM** with all Laravel extensions
+- **Nginx** web server for HTTP requests
+- **Health checks** with database connectivity tests
+- **Debug breakpoints** showing loaded extensions
 
-## 🔑 Generated Keys (Already Set)
+### **⚙️ Queue Worker (`queue`)**
+- **Background job processing** via `php artisan queue:work`
+- **Redis connection validation**
+- **Graceful shutdown handling**
+- **Memory and timeout optimizations**
 
-Your application comes with pre-generated secure keys:
-- ✅ **APP_KEY**: `base64:d382dhqJQnQwKDdHshiAeWJPrXV5QrYjKt8nA+k7fUw=`
-- ✅ **REVERB_APP_KEY**: `2zqXf/k6se11XifOcwsDtgBcVILKpW3I4rH8zPOeNaw=`
-- ✅ **REVERB_APP_SECRET**: `eYl3aY/WfwP38wg6wzSKduxsOZqQx7pkemwD5qpYfgI=`
-- ✅ **REDIS_PASSWORD**: `bBv4P99NGkd0ETb2L8lA2KKEgkZ8NB4TPnLRLZtxrYw=`
+### **⏰ Scheduler (`schedule`)**
+- **Laravel Cron** via `php artisan schedule:work`
+- **Scheduled task validation**
+- **Database connectivity checks**
+- **Task listing for debugging**
 
-## 💡 What's Running
+### **📡 Reverb (`reverb`)**
+- **WebSocket server** on port 6001
+- **Real-time communication** for Laravel Echo
+- **Port availability checks**
+- **WebSocket connectivity tests**
 
-Your deployed application includes:
-- **Nginx** - Web server
-- **PHP-FPM** - Laravel application
-- **Laravel Reverb** - WebSocket server (port 8080)
-- **Laravel Horizon** - Queue management
-- **Queue Workers** - 2 background workers
-- **Task Scheduler** - Cron jobs
-- **Redis** - Caching and queues
+### **📊 Horizon (`horizon`)**
+- **Queue management dashboard** at `/horizon`
+- **Worker monitoring and control**
+- **Redis queue backend validation**
+- **Auto-scaling queue workers**
 
-## 🧪 Test WebSocket Connection
+### **🔴 Redis**
+- **Queue backend** for jobs
+- **Cache store** for performance
+- **Session storage** for users
+- **Persistent data** with append-only file
 
-```javascript
-// In browser console
-const ws = new WebSocket('wss://your-domain.com/app/your-reverb-key?protocol=7&client=js&version=8.4.0-rc2');
-ws.onopen = () => console.log('WebSocket connected!');
-```
+## 🐛 **Debug Features**
 
-## 🔧 Send Test Email Job
-
-```php
-// In Laravel Tinker or controller
-App\Jobs\ProcessEmailQueue::dispatch('test@example.com', 'Test Subject', 'Hello World!');
-```
-
-## 📊 Monitor Your Application
-
-- **Queue Status**: Visit `/horizon` to see queue workers and job processing
-- **Application Logs**: Check Dokploy application logs
-- **Health Check**: Visit `/up` to verify application status
-
-## 🐛 Troubleshooting
-
-### WebSocket Not Working?
-- Check `REVERB_HOST` matches your domain exactly
-- Ensure `REVERB_PORT=443` and `REVERB_SCHEME=https`
-
-### Queue Jobs Not Processing?
-- Visit `/horizon` to check worker status
-- Verify Redis connection settings
-
-### Database Connection Issues?
-- Verify external database credentials
-- Check if database accepts connections from Dokploy server IP
-
-## 🔄 Local Development
+Each service includes **comprehensive debug breakpoints**:
 
 ```bash
-# Start development environment
-docker-compose up -d
-
-# Access services
-# App: http://localhost
-# WebSocket: ws://localhost:6001
-# Horizon: http://localhost/horizon
+# Example: Queue Worker Debug Output
+==== Entrypoint: Starting Laravel Queue Worker ====
+PHP Version: 8.4.x
+=== [BREAKPOINT] Checking Queue Worker Extensions ===
+✅ All queue worker extensions are loaded
+=== [BREAKPOINT] Queue Configuration Check ===
+QUEUE_CONNECTION: redis
+REDIS_HOST: redis
+=== [BREAKPOINT] Waiting for Redis Queue Backend ===
+✅ Redis connection verified
+🚀 [BREAKPOINT] Queue worker checks completed!
+⚙️ Starting Laravel Queue Worker...
 ```
 
-## 📁 File Structure
+## 🌐 **Access Points**
 
+After deployment, access your services:
+
+- **🌐 Main App**: `https://your-domain.com`
+- **📊 Horizon Dashboard**: `https://your-domain.com/horizon`
+- **📡 WebSocket**: `wss://your-domain.com/app/{app-key}`
+- **🔍 Health Check**: `https://your-domain.com/up`
+
+## 🔍 **Monitoring & Health Checks**
+
+All services include **comprehensive health checks**:
+
+- **App**: PHP version and extension checks
+- **Queue**: Job processing verification
+- **Schedule**: Laravel CLI functionality
+- **Reverb**: WebSocket port availability
+- **Horizon**: Queue manager status
+- **Redis**: Connection and ping tests
+
+## 🛠️ **Troubleshooting**
+
+### **Service Won't Start?**
+Check the debug output in container logs:
+```bash
+docker logs laravel-app
+docker logs laravel-queue
+docker logs laravel-reverb
 ```
-├── 🐳 Docker files
-│   ├── Dockerfile
-│   ├── docker-compose.yml (development)
-│   └── docker-compose.production.yml (Dokploy)
-├── 📦 Nixpacks
-│   ├── nixpacks.toml
-│   └── .env.nixpacks.production
-├── 🎯 Laravel app
-│   ├── app/Events/MessageSent.php (WebSocket example)
-│   ├── app/Jobs/ProcessEmailQueue.php (Queue example)
-│   └── config/reverb.php & horizon.php
-└── 📚 This README.md
+
+### **Database Connection Issues?**
+Each entrypoint tests connectivity with timeout:
+- **MySQL**: 60-second timeout with 5-second intervals
+- **MongoDB**: 60-second timeout with 5-second intervals
+- **Redis**: 30-second timeout with 3-second intervals
+
+### **Missing Extensions?**
+Each Dockerfile explicitly installs and verifies:
+- **Core**: pdo_mysql, mongodb, redis, gd, intl
+- **Process**: pcntl, sockets (for queues/WebSockets)
+- **Performance**: opcache, bcmath, zip
+
+### **Queue Jobs Not Processing?**
+1. Check Redis connection in queue worker logs
+2. Verify `QUEUE_CONNECTION=redis` in environment
+3. Monitor Horizon dashboard for worker status
+
+## 🎯 **Production Ready**
+
+This setup includes all production best practices:
+
+- ✅ **Multi-stage builds** for optimized images
+- ✅ **Health checks** for zero-downtime deployments
+- ✅ **Graceful shutdown** handling
+- ✅ **Resource limits** and optimizations
+- ✅ **Security headers** and configurations
+- ✅ **Comprehensive logging** to stderr
+- ✅ **Extension verification** at startup
+- ✅ **Connection testing** with timeouts
+
+## 📝 **Key Environment Variables**
+
+```env
+# Required for all services
+PRODUCTION_DOMAIN=your-domain.com
+APP_KEY=base64:your-app-key
+
+# Database clusters (external)
+DB_HOST=mysql-cluster-host
+MONGODB_HOST=mongodb-cluster-host
+
+# Reverb WebSocket
+REVERB_APP_ID=your-reverb-id
+REVERB_APP_KEY=your-reverb-key
+REVERB_APP_SECRET=your-reverb-secret
+
+# Redis (internal)
+REDIS_PASSWORD=secure-redis-password
 ```
-
-## 🎉 That's It!
-
-Your Laravel application with WebSockets, Queue Management, and Background Workers is ready for production deployment on Dokploy!
-
-**Need help?** Check the application logs in Dokploy or visit `/horizon` for queue monitoring.
 
 ---
 
-**Built with ❤️ for Dokploy deployment**
+🎉 **You now have a professional, debuggable, production-ready Laravel setup with full WebSocket, queue, and scheduling support!**

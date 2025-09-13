@@ -1,140 +1,347 @@
-version: '3.8'
-
 services:
-  # Laravel Application
+  # Main Laravel Application (PHP-FPM)
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/app/Dockerfile
     container_name: laravel-app
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
       - .:/var/www/html
-      - ./storage:/var/www/html/storage
-      - ./bootstrap/cache:/var/www/html/bootstrap/cache
-    ports:
-      - "80:80"
-      - "6001:6001"  # WebSocket port for Reverb
+      - ../files/storage:/var/www/html/storage
+      - ../files/bootstrap-cache:/var/www/html/bootstrap/cache
     networks:
-      - laravel-network
-    depends_on:
-      - redis
-      - mysql
-      - mongodb
+      - dokploy-network
     environment:
-      - APP_ENV=local
-      - APP_DEBUG=true
-      - DB_HOST=mysql
-      - DB_DATABASE=laravel
-      - DB_USERNAME=laravel
-      - DB_PASSWORD=secret
+      # Application
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY}
+      - APP_URL=https://${PRODUCTION_DOMAIN}
+
+      # External MySQL Cluster
+      - DB_CONNECTION=mysql
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      # External MongoDB Cluster
+      - MONGODB_HOST=${MONGODB_HOST}
+      - MONGODB_PORT=${MONGODB_PORT:-27017}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
+      - MONGODB_USERNAME=${MONGODB_USERNAME}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+      - MONGODB_AUTH_SOURCE=${MONGODB_AUTH_SOURCE:-admin}
+
+      # Redis (for cache, sessions, queues)
       - REDIS_HOST=redis
-      - MONGODB_HOST=mongodb
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+
+      # Queue Configuration
       - QUEUE_CONNECTION=redis
-      - BROADCAST_CONNECTION=reverb
       - CACHE_STORE=redis
       - SESSION_DRIVER=redis
+
+      # Broadcasting & Reverb
+      - BROADCAST_CONNECTION=reverb
+      - REVERB_APP_ID=${REVERB_APP_ID}
+      - REVERB_APP_KEY=${REVERB_APP_KEY}
+      - REVERB_APP_SECRET=${REVERB_APP_SECRET}
+      - REVERB_HOST=${PRODUCTION_DOMAIN}
+      - REVERB_PORT=443
+      - REVERB_SCHEME=https
+
+      # Horizon
+      - HORIZON_DOMAIN=${PRODUCTION_DOMAIN}
+
+      # Logging
+      - LOG_CHANNEL=stderr
+      - LOG_LEVEL=${LOG_LEVEL:-error}
+    depends_on:
+      - redis
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      test: ["CMD", "php", "-v"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
+    labels:
+      # Traefik configuration for Dokploy
+      - "traefik.enable=true"
+      - "traefik.http.routers.laravel-app.rule=Host(`${PRODUCTION_DOMAIN}`)"
+      - "traefik.http.routers.laravel-app.entrypoints=websecure"
+      - "traefik.http.routers.laravel-app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.laravel-app.loadbalancer.server.port=9000"
 
-  # Redis for caching, sessions, and queues
-  redis:
-    image: redis:7-alpine
-    container_name: laravel-redis
+  # Nginx Web Server
+  nginx:
+    image: nginx:alpine
+    container_name: laravel-nginx
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "80"
     volumes:
-      - redis_data:/data
+      - .:/var/www/html:ro
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
-      - laravel-network
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - dokploy-network
+    depends_on:
+      - app
+    labels:
+      # Traefik configuration for web server
+      - "traefik.enable=true"
+      - "traefik.http.routers.laravel-web.rule=Host(`${PRODUCTION_DOMAIN}`)"
+      - "traefik.http.routers.laravel-web.entrypoints=websecure"
+      - "traefik.http.routers.laravel-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.laravel-web.loadbalancer.server.port=80"
 
-  # MySQL Database
-  mysql:
-    image: mysql:8.0
-    container_name: laravel-mysql
+  # Queue Worker
+  queue:
+    build:
+      context: .
+      dockerfile: docker/queue/Dockerfile
+    container_name: laravel-queue
     restart: unless-stopped
-    ports:
-      - "3306:3306"
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - ../files/storage:/var/www/html/storage
+      - ../files/bootstrap-cache:/var/www/html/bootstrap/cache
+    networks:
+      - dokploy-network
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: laravel
-      MYSQL_USER: laravel
-      MYSQL_PASSWORD: secret
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
-    networks:
-      - laravel-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      # Application
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY}
 
-  # MongoDB Database
-  mongodb:
-    image: mongo:7
-    container_name: laravel-mongodb
+      # External MySQL Cluster
+      - DB_CONNECTION=mysql
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      # External MongoDB Cluster
+      - MONGODB_HOST=${MONGODB_HOST}
+      - MONGODB_PORT=${MONGODB_PORT:-27017}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
+      - MONGODB_USERNAME=${MONGODB_USERNAME}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - QUEUE_CONNECTION=redis
+
+      # Logging
+      - LOG_CHANNEL=stderr
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      - app
+      - redis
+    healthcheck:
+      test: ["CMD", "php", "artisan", "queue:monitor", "--once"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+
+  # Task Scheduler
+  schedule:
+    build:
+      context: .
+      dockerfile: docker/schedule/Dockerfile
+    container_name: laravel-schedule
     restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: mongodb
-      MONGO_INITDB_ROOT_PASSWORD: secret
-      MONGO_INITDB_DATABASE: laravel_mongodb
+    working_dir: /var/www/html
     volumes:
-      - mongodb_data:/data/db
-      - ./docker/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - .:/var/www/html
+      - ../files/storage:/var/www/html/storage
+      - ../files/bootstrap-cache:/var/www/html/bootstrap/cache
     networks:
-      - laravel-network
+      - dokploy-network
+    environment:
+      # Application
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY}
+
+      # External MySQL Cluster
+      - DB_CONNECTION=mysql
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      # External MongoDB Cluster
+      - MONGODB_HOST=${MONGODB_HOST}
+      - MONGODB_PORT=${MONGODB_PORT:-27017}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
+      - MONGODB_USERNAME=${MONGODB_USERNAME}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+
+      # Logging
+      - LOG_CHANNEL=stderr
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      - app
+      - redis
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 30s
+      test: ["CMD", "php", "artisan", "--version"]
+      interval: 60s
       timeout: 10s
       retries: 3
 
-  # Laravel Horizon Dashboard (optional separate container)
+  # Reverb WebSocket Server
+  reverb:
+    build:
+      context: .
+      dockerfile: docker/reverb/Dockerfile
+    container_name: laravel-reverb
+    restart: unless-stopped
+    working_dir: /var/www/html
+    ports:
+      - "6001"
+    volumes:
+      - .:/var/www/html
+      - ../files/storage:/var/www/html/storage
+      - ../files/bootstrap-cache:/var/www/html/bootstrap/cache
+    networks:
+      - dokploy-network
+    environment:
+      # Application
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY}
+
+      # External MySQL Cluster
+      - DB_CONNECTION=mysql
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+
+      # Reverb Configuration
+      - BROADCAST_CONNECTION=reverb
+      - REVERB_APP_ID=${REVERB_APP_ID}
+      - REVERB_APP_KEY=${REVERB_APP_KEY}
+      - REVERB_APP_SECRET=${REVERB_APP_SECRET}
+      - REVERB_HOST=${PRODUCTION_DOMAIN}
+      - REVERB_PORT=443
+      - REVERB_SCHEME=https
+
+      # Logging
+      - LOG_CHANNEL=stderr
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      - app
+      - redis
+    healthcheck:
+      test: ["CMD", "netstat", "-tuln", "|", "grep", ":6001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      # Traefik configuration for WebSocket
+      - "traefik.enable=true"
+      - "traefik.http.routers.laravel-websocket.rule=Host(`${PRODUCTION_DOMAIN}`) && PathPrefix(`/app/`)"
+      - "traefik.http.routers.laravel-websocket.entrypoints=websecure"
+      - "traefik.http.routers.laravel-websocket.tls.certresolver=letsencrypt"
+      - "traefik.http.services.laravel-websocket.loadbalancer.server.port=6001"
+
+  # Horizon Queue Manager
   horizon:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/horizon/Dockerfile
     container_name: laravel-horizon
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
       - .:/var/www/html
-    command: php artisan horizon
+      - ../files/storage:/var/www/html/storage
+      - ../files/bootstrap-cache:/var/www/html/bootstrap/cache
     networks:
-      - laravel-network
-    depends_on:
-      - redis
-      - mysql
+      - dokploy-network
     environment:
-      - APP_ENV=local
-      - DB_HOST=mysql
+      # Application
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY}
+
+      # External MySQL Cluster
+      - DB_CONNECTION=mysql
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      # External MongoDB Cluster
+      - MONGODB_HOST=${MONGODB_HOST}
+      - MONGODB_PORT=${MONGODB_PORT:-27017}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
+      - MONGODB_USERNAME=${MONGODB_USERNAME}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+
+      # Redis (Critical for Horizon)
       - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - QUEUE_CONNECTION=redis
 
-networks:
-  laravel-network:
-    driver: bridge
+      # Horizon Configuration
+      - HORIZON_DOMAIN=${PRODUCTION_DOMAIN}
 
-volumes:
-  redis_data:
-    driver: local
-  mysql_data:
-    driver: local
-  mongodb_data:
-    driver: local
+      # Logging
+      - LOG_CHANNEL=stderr
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      - app
+      - redis
+    healthcheck:
+      test: ["CMD", "php", "artisan", "horizon:status"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+
+  # Redis for Queues, Cache, and Sessions
+  redis:
+    image: redis:7-alpine
+    container_name: laravel-redis
+    restart: unless-stopped
+    networks:
+      - dokploy-network
+    volumes:
+      - ../files/redis-data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  dokploy-network:
+    external: true
