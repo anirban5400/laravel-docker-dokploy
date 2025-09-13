@@ -1,12 +1,12 @@
-# Use the official PHP 8.2 FPM image as base
-FROM php:8.2-fpm-alpine
+# Multi-stage build for Laravel with PHP 8.4
+FROM php:8.4-fpm-alpine AS base
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Install system dependencies
+# Install system dependencies and PHP extensions
 RUN apk add --no-cache \
-    build-base \
+    bash \
     curl \
     freetype-dev \
     git \
@@ -23,10 +23,11 @@ RUN apk add --no-cache \
     supervisor \
     unzip \
     zip \
-    openssl-dev
-
-# Configure and install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    autoconf \
+    g++ \
+    make \
+    openssl-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         bcmath \
         gd \
@@ -43,60 +44,65 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Install Redis extension
-RUN apk add --no-cache $PHPIZE_DEPS \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
+# Install PECL extensions
+RUN apk add --no-cache $PHPIZE_DEPS cyrus-sasl-dev \
+    && pecl install redis mongodb \
+    && docker-php-ext-enable redis mongodb \
     && apk del $PHPIZE_DEPS
 
-# Install MongoDB extension
-RUN apk add --no-cache $PHPIZE_DEPS cyrus-sasl-dev \
-    && pecl install mongodb \
-    && docker-php-ext-enable mongodb \
-    && apk del $PHPIZE_DEPS
+# ================================
+# Build stage
+# ================================
+FROM base AS build
 
 # Copy composer files first for better layer caching
 COPY composer.json composer.lock ./
 
-# Install PHP dependencies first (better for Docker layer caching)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+# Install PHP dependencies (with dev dependencies for build)
+RUN composer install --optimize-autoloader --no-interaction
 
 # Copy package.json files for Node dependencies
 COPY package*.json ./
 
 # Install Node.js dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy application files
 COPY . .
+
+# Build assets
+RUN npm run build
+
+# Optimize autoloader for production
+RUN composer dump-autoload --optimize --no-dev
+
+# ================================
+# Production stage
+# ================================
+FROM base AS production
 
 # Copy configuration files
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/php.ini /usr/local/etc/php/php.ini
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage \
+# Copy built application from build stage
+COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
+
+# Set proper permissions
+RUN chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
-
-# Run Composer scripts now that all files are copied
-RUN composer dump-autoload --optimize
-
-# Build assets
-RUN npm run build \
-    && npm cache clean --force
 
 # Create necessary directories
 RUN mkdir -p /var/log/supervisor \
     && mkdir -p /run/nginx \
     && mkdir -p /var/www/html/storage/logs
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+# Health check for Dokploy zero downtime deployments
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost/up || exit 1
 
-# Expose ports
+# Expose ports (80 for web, 6001 for Reverb WebSockets)
 EXPOSE 80 6001
 
 # Start services using supervisor
