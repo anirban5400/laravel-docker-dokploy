@@ -44,13 +44,13 @@ else
         echo "🔄 Database not ready, waiting 2 seconds... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
         sleep 2
     done
-    
+
     echo "✅ Database connection established"
 fi
 
-# Run database migrations
-echo "🔧 Running database migrations..."
-php artisan migrate --force
+# Run database migrations (commented out to avoid running migrations during build)
+# echo "🔧 Running database migrations..."
+# php artisan migrate --force
 
 # Cache configuration and routes for better performance
 echo "⚡ Optimizing application..."
