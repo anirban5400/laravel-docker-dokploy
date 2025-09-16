@@ -64,6 +64,8 @@ RUN apk add --no-cache \
     openssl \
     ca-certificates \
     zstd-libs \
+    cyrus-sasl-libs \
+    snappy-libs \
     && apk add --no-cache --virtual .build-deps \
         build-base \
         freetype-dev \
