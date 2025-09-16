@@ -48,6 +48,18 @@ else
     echo "✅ Database connection established"
 fi
 
+# Fix storage permissions for Laravel
+echo "🔧 Fixing storage permissions..."
+mkdir -p /var/www/storage/framework/views \
+         /var/www/storage/framework/cache \
+         /var/www/storage/framework/sessions \
+         /var/www/storage/logs \
+         /var/www/bootstrap/cache
+
+chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache || true
+chmod -R 775 /var/www/storage || true
+chmod -R 775 /var/www/bootstrap/cache || true
+
 # Show migration status (informational)
 echo "📦 Checking migration status..."
 if php artisan migrate:status --no-interaction --ansi; then
