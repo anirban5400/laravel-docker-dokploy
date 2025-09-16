@@ -115,7 +115,7 @@ php -r '
             if ($database) { $r->select($database); }
             $pingResult = $r->ping();
             echo "Ping result: " . $pingResult . "\n";
-            $ok = ($pingResult === "+PONG");
+            $ok = ($pingResult === "+PONG" || $pingResult === "PONG" || $pingResult === 1);
         } catch (Throwable $e) {
             echo "Redis error: " . $e->getMessage() . "\n";
         }
