@@ -100,13 +100,17 @@ php -r '
     $password = getenv("REDIS_PASSWORD") ?: null;
     $database = (int)(getenv("REDIS_DB") ?: 0);
     echo "Connecting to: {$host}:{$port}\n";
+    echo "Password set: " . ($password ? "yes" : "no") . "\n";
     $ok = false;
     if ($hasExt) {
         try {
             $r = new Redis();
             $r->connect($host, $port, 1.5);
-            if ($password && !empty($password)) {
+            if ($password && trim($password) !== "") {
+                echo "Attempting authentication...\n";
                 $r->auth($password);
+            } else {
+                echo "No authentication needed\n";
             }
             if ($database) { $r->select($database); }
             $pingResult = $r->ping();
