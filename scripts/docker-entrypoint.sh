@@ -48,9 +48,81 @@ else
     echo "✅ Database connection established"
 fi
 
-# Run database migrations (commented out to avoid running migrations during build)
-# echo "🔧 Running database migrations..."
-# php artisan migrate --force
+# Show migration status (informational)
+echo "📦 Checking migration status..."
+if php artisan migrate:status --no-interaction --ansi; then
+    echo "✅ Migration status checked"
+else
+    echo "⚠️  Could not retrieve migration status (this won't stop startup)"
+fi
+
+# Check MongoDB connectivity (ping)
+echo "🧪 Checking MongoDB connection..."
+php -d detect_unicode=0 -r '
+    $uri = getenv("MONGODB_URI");
+    if (!$uri) {
+        $host = getenv("MONGODB_HOST") ?: "127.0.0.1";
+        $port = getenv("MONGODB_PORT") ?: "27017";
+        $database = getenv("MONGODB_DATABASE") ?: "admin";
+        $user = getenv("MONGODB_USERNAME");
+        $pass = getenv("MONGODB_PASSWORD");
+        if ($user && $pass) {
+            $uri = "mongodb://{$user}:{$pass}@{$host}:{$port}/{$database}";
+        } else {
+            $uri = "mongodb://{$host}:{$port}/{$database}";
+        }
+    }
+    try {
+        $manager = new MongoDB\\Driver\\Manager($uri);
+        $command = new MongoDB\\Driver\\Command(["ping" => 1]);
+        $cursor = $manager->executeCommand("admin", $command);
+        $response = current($cursor->toArray());
+        if (isset($response->ok) && (float)$response->ok === 1.0) {
+            echo "MongoDB ping: OK\n";
+            exit(0);
+        }
+        echo "MongoDB ping: FAILED\n";
+        exit(1);
+    } catch (Throwable $e) {
+        fwrite(STDERR, "MongoDB error: " . $e->getMessage() . "\n");
+        exit(1);
+    }
+' >/dev/null 2>&1 && echo "✅ MongoDB reachable" || echo "⚠️  MongoDB not reachable"
+
+# Check Redis installation and connectivity
+echo "🧪 Checking Redis extension and connectivity..."
+php -r '
+    $hasExt = extension_loaded("redis");
+    echo "extension_loaded(redis)=" . ($hasExt ? "yes" : "no") . "\n";
+    $host = getenv("REDIS_HOST") ?: "127.0.0.1";
+    $port = (int)(getenv("REDIS_PORT") ?: 6379);
+    $password = getenv("REDIS_PASSWORD") ?: null;
+    $database = (int)(getenv("REDIS_DB") ?: 0);
+    $ok = false;
+    try {
+        if ($hasExt) {
+            $r = new Redis();
+            $r->connect($host, $port, 1.5);
+            if ($password) { $r->auth($password); }
+            if ($database) { $r->select($database); }
+            $ok = ($r->ping() === "+PONG");
+        } else {
+            // Fallback to Predis if available via Composer
+            @include __DIR__ . "/../vendor/autoload.php";
+            if (class_exists(\\Predis\\Client::class)) {
+                $client = new Predis\\Client([
+                    "scheme" => "tcp",
+                    "host" => $host,
+                    "port" => $port,
+                    "password" => $password ?: null,
+                    "database" => $database,
+                ]);
+                $ok = ($client->ping() == "+PONG");
+            }
+        }
+    } catch (Throwable $e) {}
+    echo $ok ? "redis_ping=OK\n" : "redis_ping=FAIL\n";
+' 2>/dev/null | while IFS= read -r line; do echo "🔎 $line"; done
 
 # Cache configuration and routes for better performance
 echo "⚡ Optimizing application..."
