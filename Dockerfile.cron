@@ -43,8 +43,8 @@ RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
 # Copy application code
 COPY . .
 
-# Generate optimized autoloader
-RUN composer dump-autoload --optimize --classmap-authoritative
+# Generate optimized autoloader (skip composer scripts to avoid running Artisan during build)
+RUN composer dump-autoload --no-scripts --optimize --classmap-authoritative
 
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www \
