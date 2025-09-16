@@ -61,7 +61,7 @@ echo "🧪 Checking MongoDB connection..."
 php -d detect_unicode=0 -r '
     $uri = getenv("MONGODB_URI");
     if (!$uri) {
-        $host = getenv("MONGODB_HOST") ?: "127.0.0.1";
+        $host = getenv("MONGODB_HOST") ?: "mongodb";
         $port = getenv("MONGODB_PORT") ?: "27017";
         $database = getenv("MONGODB_DATABASE") ?: "admin";
         $user = getenv("MONGODB_USERNAME");
@@ -108,8 +108,8 @@ php -r '
             $ok = ($r->ping() === "+PONG");
         } else {
             // Fallback to Predis if available via Composer
-            @include __DIR__ . "/../vendor/autoload.php";
-            if (class_exists(\\Predis\\Client::class)) {
+            @include "vendor/autoload.php";
+            if (class_exists("Predis\\Client")) {
                 $client = new Predis\\Client([
                     "scheme" => "tcp",
                     "host" => $host,
@@ -123,6 +123,10 @@ php -r '
     } catch (Throwable $e) {}
     echo $ok ? "redis_ping=OK\n" : "redis_ping=FAIL\n";
 ' 2>/dev/null | while IFS= read -r line; do echo "🔎 $line"; done
+
+# List all loaded PHP extensions
+echo "🧩 Loaded PHP extensions:"
+php -r 'foreach (get_loaded_extensions() as $e) { echo $e, "\n"; }' 2>/dev/null | while IFS= read -r line; do echo "🔹 $line"; done
 
 # Cache configuration and routes for better performance
 echo "⚡ Optimizing application..."
