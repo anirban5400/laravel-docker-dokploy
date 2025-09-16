@@ -74,8 +74,8 @@ php -d detect_unicode=0 -r '
     }
     echo "Using URI: " . (strpos($uri, "mongodb+srv://") !== false ? "mongodb+srv://***" : $uri) . "\n";
     try {
-        $manager = new MongoDB\\Driver\\Manager($uri);
-        $command = new MongoDB\\Driver\\Command(["ping" => 1]);
+        $manager = new MongoDB\Driver\Manager($uri);
+        $command = new MongoDB\Driver\Command(["ping" => 1]);
         $cursor = $manager->executeCommand("admin", $command);
         $response = current($cursor->toArray());
         if (isset($response->ok) && (float)$response->ok === 1.0) {
@@ -105,7 +105,9 @@ php -r '
         try {
             $r = new Redis();
             $r->connect($host, $port, 1.5);
-            if ($password) { $r->auth($password); }
+            if ($password && !empty($password)) {
+                $r->auth($password);
+            }
             if ($database) { $r->select($database); }
             $pingResult = $r->ping();
             echo "Ping result: " . $pingResult . "\n";
