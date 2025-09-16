@@ -63,6 +63,7 @@ RUN apk add --no-cache \
     curl \
     openssl \
     ca-certificates \
+    zstd-libs \
     && apk add --no-cache --virtual .build-deps \
         build-base \
         freetype-dev \
@@ -70,6 +71,10 @@ RUN apk add --no-cache \
         libpng-dev \
         libzip-dev \
         openssl-dev \
+        zlib-dev \
+        zstd-dev \
+        cyrus-sasl-dev \
+        pkgconfig \
         $PHPIZE_DEPS \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
