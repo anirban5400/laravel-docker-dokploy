@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     zip \
     unzip \
     curl \
+    openssl \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         bcmath \
@@ -21,6 +22,10 @@ RUN apk add --no-cache \
         pcntl \
         posix \
         opcache \
+    && apk add --no-cache --virtual .pecl-build-deps openssl-dev $PHPIZE_DEPS \
+    && pecl install redis mongodb \
+    && docker-php-ext-enable redis mongodb \
+    && apk del .pecl-build-deps \
     && rm -rf /var/cache/apk/*
 
 # Install Composer
