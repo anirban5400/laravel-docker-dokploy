@@ -58,6 +58,12 @@ fi
 
 # Check MongoDB connectivity (ping)
 echo "🧪 Checking MongoDB connection..."
+echo "MONGODB_URI: $MONGODB_URI"
+echo "MONGODB_HOST: $MONGODB_HOST"
+echo "MONGODB_PORT: $MONGODB_PORT"
+echo "MONGODB_DATABASE: $MONGODB_DATABASE"
+echo "MONGODB_USERNAME: $MONGODB_USERNAME"
+echo "MONGODB_PASSWORD: $MONGODB_PASSWORD"
 php -d detect_unicode=0 -r '
     $uri = getenv("MONGODB_URI");
     if (!$uri) {
