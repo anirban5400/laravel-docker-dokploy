@@ -58,12 +58,6 @@ fi
 
 # Check MongoDB connectivity (ping)
 echo "🧪 Checking MongoDB connection..."
-echo "MONGODB_URI: $MONGODB_URI"
-echo "MONGODB_HOST: $MONGODB_HOST"
-echo "MONGODB_PORT: $MONGODB_PORT"
-echo "MONGODB_DATABASE: $MONGODB_DATABASE"
-echo "MONGODB_USERNAME: $MONGODB_USERNAME"
-echo "MONGODB_PASSWORD: $MONGODB_PASSWORD"
 php -d detect_unicode=0 -r '
     $uri = getenv("MONGODB_URI");
     if (!$uri) {
@@ -78,6 +72,7 @@ php -d detect_unicode=0 -r '
             $uri = "mongodb://{$host}:{$port}/{$database}";
         }
     }
+    echo "Using URI: " . (strpos($uri, "mongodb+srv://") !== false ? "mongodb+srv://***" : $uri) . "\n";
     try {
         $manager = new MongoDB\\Driver\\Manager($uri);
         $command = new MongoDB\\Driver\\Command(["ping" => 1]);
@@ -87,13 +82,13 @@ php -d detect_unicode=0 -r '
             echo "MongoDB ping: OK\n";
             exit(0);
         }
-        echo "MongoDB ping: FAILED\n";
+        echo "MongoDB ping: FAILED - Response: " . json_encode($response) . "\n";
         exit(1);
     } catch (Throwable $e) {
-        fwrite(STDERR, "MongoDB error: " . $e->getMessage() . "\n");
+        echo "MongoDB error: " . $e->getMessage() . "\n";
         exit(1);
     }
-' >/dev/null 2>&1 && echo "✅ MongoDB reachable" || echo "⚠️  MongoDB not reachable"
+' && echo "✅ MongoDB reachable" || echo "⚠️  MongoDB not reachable"
 
 # Check Redis installation and connectivity
 echo "🧪 Checking Redis extension and connectivity..."
@@ -104,6 +99,7 @@ php -r '
     $port = (int)(getenv("REDIS_PORT") ?: 6379);
     $password = getenv("REDIS_PASSWORD") ?: null;
     $database = (int)(getenv("REDIS_DB") ?: 0);
+    echo "Connecting to: {$host}:{$port}\n";
     $ok = false;
     if ($hasExt) {
         try {
@@ -111,11 +107,17 @@ php -r '
             $r->connect($host, $port, 1.5);
             if ($password) { $r->auth($password); }
             if ($database) { $r->select($database); }
-            $ok = ($r->ping() === "+PONG");
-        } catch (Throwable $e) {}
+            $pingResult = $r->ping();
+            echo "Ping result: " . $pingResult . "\n";
+            $ok = ($pingResult === "+PONG");
+        } catch (Throwable $e) {
+            echo "Redis error: " . $e->getMessage() . "\n";
+        }
+    } else {
+        echo "Redis extension not loaded\n";
     }
     echo $ok ? "redis_ping=OK\n" : "redis_ping=FAIL\n";
-' 2>/dev/null | while IFS= read -r line; do echo "🔎 $line"; done
+' | while IFS= read -r line; do echo "🔎 $line"; done
 
 # List all loaded PHP extensions
 echo "🧩 Loaded PHP extensions:"
