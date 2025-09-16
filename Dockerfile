@@ -102,8 +102,11 @@ WORKDIR /var/www
 # Copy application from builder stage
 COPY --from=builder --chown=www-data:www-data /var/www /var/www
 
-# Copy entrypoint script from docker/app
-COPY docker/app/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+# Prepare scripts directory and copy entrypoint + helper
+RUN mkdir -p /var/www/scripts
+COPY scripts/wait-for-db.sh /var/www/scripts/wait-for-db.sh
+RUN chmod +x /var/www/scripts/wait-for-db.sh
+COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create necessary directories
