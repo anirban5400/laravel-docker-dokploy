@@ -62,6 +62,7 @@ RUN apk add --no-cache \
     libzip \
     curl \
     openssl \
+    ca-certificates \
     && apk add --no-cache --virtual .build-deps \
         build-base \
         freetype-dev \

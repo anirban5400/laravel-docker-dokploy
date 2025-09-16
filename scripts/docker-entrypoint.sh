@@ -94,33 +94,20 @@ echo "🧪 Checking Redis extension and connectivity..."
 php -r '
     $hasExt = extension_loaded("redis");
     echo "extension_loaded(redis)=" . ($hasExt ? "yes" : "no") . "\n";
-    $host = getenv("REDIS_HOST") ?: "127.0.0.1";
+    $host = getenv("REDIS_HOST") ?: "redis";
     $port = (int)(getenv("REDIS_PORT") ?: 6379);
     $password = getenv("REDIS_PASSWORD") ?: null;
     $database = (int)(getenv("REDIS_DB") ?: 0);
     $ok = false;
-    try {
-        if ($hasExt) {
+    if ($hasExt) {
+        try {
             $r = new Redis();
             $r->connect($host, $port, 1.5);
             if ($password) { $r->auth($password); }
             if ($database) { $r->select($database); }
             $ok = ($r->ping() === "+PONG");
-        } else {
-            // Fallback to Predis if available via Composer
-            @include "vendor/autoload.php";
-            if (class_exists("Predis\\Client")) {
-                $client = new Predis\\Client([
-                    "scheme" => "tcp",
-                    "host" => $host,
-                    "port" => $port,
-                    "password" => $password ?: null,
-                    "database" => $database,
-                ]);
-                $ok = ($client->ping() == "+PONG");
-            }
-        }
-    } catch (Throwable $e) {}
+        } catch (Throwable $e) {}
+    }
     echo $ok ? "redis_ping=OK\n" : "redis_ping=FAIL\n";
 ' 2>/dev/null | while IFS= read -r line; do echo "🔎 $line"; done
 
