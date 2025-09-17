@@ -1,6 +1,6 @@
-# Multi-stage Dockerfile for Laravel Reverb WebSocket Server (Production)
+# Multi-stage Dockerfile for Laravel Cron/Scheduler (Production)
 # Stage 1: Build stage
-FROM php:8.4-cli-alpine AS builder
+FROM php:8.4-cli-alpine3.19 AS builder
 
 # Install system dependencies and PHP extensions
 RUN apk add --no-cache \
@@ -35,13 +35,13 @@ COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 
 # Copy composer files
-COPY composer.json composer.lock ./
+COPY ../../composer.json ../../composer.lock ./
 
 # Install PHP dependencies (production optimized)
 RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
 
 # Copy application code
-COPY . .
+COPY ../../ .
 
 # Generate optimized autoloader (skip composer scripts to avoid running Artisan during build)
 RUN composer dump-autoload --no-scripts --optimize --classmap-authoritative
@@ -52,7 +52,7 @@ RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/bootstrap/cache
 
 # Stage 2: Production stage
-FROM php:8.4-cli-alpine AS production
+FROM php:8.4-cli-alpine3.19 AS production
 
 # Install runtime dependencies and PHP extensions
 RUN apk add --no-cache \
@@ -92,13 +92,15 @@ RUN apk add --no-cache \
     && apk del .build-deps \
     && rm -rf /var/cache/apk/*
 
-# Production OPcache configuration for CLI
-RUN echo 'opcache.enable_cli=1' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.memory_consumption=128' >> /usr/local/etc/php/conf.d/opcache.ini \
+# Production OPcache configuration
+RUN echo 'opcache.memory_consumption=128' >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo 'opcache.interned_strings_buffer=8' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.max_accelerated_files=4000' >> /usr/local/etc/php/conf.d/opcache.ini
+    && echo 'opcache.max_accelerated_files=4000' >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo 'opcache.revalidate_freq=2' >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo 'opcache.fast_shutdown=1' >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo 'opcache.enable_cli=1' >> /usr/local/etc/php/conf.d/opcache.ini
 
-# PHP configuration for reverb
+# Production PHP configuration for scheduler
 RUN echo 'memory_limit=256M' >> /usr/local/etc/php/conf.d/php.ini
 
 # Set working directory
@@ -108,8 +110,8 @@ WORKDIR /var/www
 COPY --from=builder --chown=www-data:www-data /var/www /var/www
 
 # Copy entrypoint script from scripts
-COPY scripts/docker-entrypoint-reverb.sh /usr/local/bin/docker-entrypoint-reverb.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint-reverb.sh
+COPY docker-entrypoint-scheduler.sh /usr/local/bin/docker-entrypoint-scheduler.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint-scheduler.sh
 
 # Create necessary directories
 RUN mkdir -p /var/www/storage/logs \
@@ -121,17 +123,12 @@ RUN mkdir -p /var/www/storage/logs \
     && chmod -R 755 /var/www/storage \
     && chmod -R 755 /var/www/bootstrap/cache
 
-# Expose Reverb default port
-EXPOSE 8080
-
-# Health check for Reverb
+# Health check for cron scheduler
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD pgrep -f "php artisan reverb:start" || exit 1
+    CMD ps aux | grep -q "php.*artisan.*schedule:work" || exit 1
 
-# Set entrypoint
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint-reverb.sh"]
+# Set entrypoint with dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--", "/usr/local/bin/docker-entrypoint-scheduler.sh"]
 
-# Start Reverb server
-CMD ["php", "artisan", "reverb:start", "--port=8080", "--host=0.0.0.0"]
-
-
+# Start cron scheduler
+CMD ["php", "artisan", "schedule:work", "--verbose"]

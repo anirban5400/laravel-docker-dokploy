@@ -2,7 +2,7 @@ services:
     app:
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: docker/app/Dockerfile
         container_name: laravel-app
         restart: unless-stopped
         depends_on:
@@ -28,7 +28,7 @@ services:
     queue:
         build:
             context: .
-            dockerfile: Dockerfile.queue
+            dockerfile: docker/queue/Dockerfile
         container_name: laravel-queue
         restart: unless-stopped
         depends_on:
@@ -56,7 +56,7 @@ services:
     scheduler:
         build:
             context: .
-            dockerfile: Dockerfile.cron
+            dockerfile: docker/scheduler/Dockerfile
         container_name: laravel-scheduler
         restart: unless-stopped
         depends_on:
@@ -84,7 +84,7 @@ services:
     reverb:
         build:
             context: .
-            dockerfile: Dockerfile.reverb
+            dockerfile: docker/reverb/Dockerfile
         container_name: laravel-reverb
         restart: unless-stopped
         depends_on:
@@ -113,12 +113,15 @@ services:
             start_period: 40s
 
     redis:
-        image: redis:7-alpine
+        build:
+            context: .
+            dockerfile: docker/redis/Dockerfile
         container_name: redis
         restart: unless-stopped
-        command: ["redis-server", "--appendonly", "yes"]
         networks:
             - laravel
+        volumes:
+            - redis_data:/data
         healthcheck:
             test: ["CMD", "redis-cli", "ping"]
             interval: 10s
@@ -126,8 +129,33 @@ services:
             retries: 5
             start_period: 10s
 
+    # mongo:
+    #     build:
+    #         context: .
+    #         dockerfile: docker/mongo/Dockerfile
+    #     container_name: mongo
+    #     restart: unless-stopped
+    #     environment:
+    #         - MONGO_INITDB_ROOT_USERNAME=admin
+    #         - MONGO_INITDB_ROOT_PASSWORD=password
+    #         - MONGO_INITDB_DATABASE=laravel
+    #     networks:
+    #         - laravel
+    #     volumes:
+    #         - mongo_data:/data/db
+    #     ports:
+    #         - "27017:27017"
+    #     healthcheck:
+    #         test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+    #         interval: 10s
+    #         timeout: 5s
+    #         retries: 5
+    #         start_period: 30s
+
     # db:
-    #     image: mysql:8.0
+    #     build:
+    #         context: .
+    #         dockerfile: docker/mysql/Dockerfile
     #     container_name: laravel-db
     #     restart: unless-stopped
     #     environment:
@@ -142,13 +170,16 @@ services:
     #     ports:
     #         - "3306:3306"
     #     healthcheck:
-    #         test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+    #         test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$MYSQL_ROOT_PASSWORD"]
     #         interval: 10s
     #         timeout: 5s
     #         retries: 5
     #         start_period: 30s
 
-volumes: {}
+volumes:
+    redis_data:
+    # db_data:
+    # mongo_data:
 
 networks:
     laravel:

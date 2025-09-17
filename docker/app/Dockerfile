@@ -1,9 +1,9 @@
 # Multi-stage Dockerfile for Laravel Web Application (Production)
 # Stage 1: Build stage
-FROM php:8.4-fpm-alpine AS builder
+FROM php:8.4-fpm-alpine3.19 AS builder
 
 # Install system dependencies and PHP extensions
-RUN apk add --no-cache \
+RUN apk update && apk upgrade && apk add --no-cache \
     build-base \
     freetype-dev \
     libjpeg-turbo-dev \
@@ -13,6 +13,7 @@ RUN apk add --no-cache \
     unzip \
     curl \
     openssl \
+    dumb-init \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         bcmath \
@@ -35,13 +36,13 @@ COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 
 # Copy composer files
-COPY composer.json composer.lock ./
+COPY ../../composer.json ../../composer.lock ./
 
 # Install PHP dependencies (production optimized)
 RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
 
 # Copy application code
-COPY . .
+COPY ../../ .
 
 # Generate optimized autoloader (skip composer scripts to avoid running Artisan during build)
 RUN composer dump-autoload --no-scripts --optimize --classmap-authoritative
@@ -52,10 +53,10 @@ RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/bootstrap/cache
 
 # Stage 2: Production stage
-FROM php:8.4-fpm-alpine AS production
+FROM php:8.4-fpm-alpine3.19 AS production
 
 # Install runtime dependencies and PHP extensions
-RUN apk add --no-cache \
+RUN apk update && apk upgrade && apk add --no-cache \
     freetype \
     libjpeg-turbo \
     libpng \
@@ -67,6 +68,7 @@ RUN apk add --no-cache \
     cyrus-sasl \
     snappy \
     libsasl \
+    dumb-init \
     && apk add --no-cache --virtual .build-deps \
         build-base \
         freetype-dev \
@@ -118,9 +120,9 @@ COPY --from=builder --chown=www-data:www-data /var/www /var/www
 
 # Prepare scripts directory and copy entrypoint + helper
 RUN mkdir -p /var/www/scripts
-COPY scripts/wait-for-db.sh /var/www/scripts/wait-for-db.sh
+COPY wait-for-db.sh /var/www/scripts/wait-for-db.sh
 RUN chmod +x /var/www/scripts/wait-for-db.sh
-COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create necessary directories
@@ -140,8 +142,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/api/health/simple || exit 1
 
-# Set entrypoint
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Set entrypoint with dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
 
 # Start Laravel's built-in server
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

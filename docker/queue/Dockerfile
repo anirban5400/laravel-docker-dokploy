@@ -1,9 +1,9 @@
-# Multi-stage Dockerfile for Laravel Cron/Scheduler (Production)
+# Multi-stage Dockerfile for Laravel Queue Worker (Production)
 # Stage 1: Build stage
-FROM php:8.4-cli-alpine AS builder
+FROM php:8.4-cli-alpine3.19 AS builder
 
 # Install system dependencies and PHP extensions
-RUN apk add --no-cache \
+RUN apk update && apk upgrade && apk add --no-cache \
     build-base \
     freetype-dev \
     libjpeg-turbo-dev \
@@ -13,6 +13,7 @@ RUN apk add --no-cache \
     unzip \
     curl \
     openssl \
+    dumb-init \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         bcmath \
@@ -35,13 +36,13 @@ COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 
 # Copy composer files
-COPY composer.json composer.lock ./
+COPY ../../composer.json ../../composer.lock ./
 
 # Install PHP dependencies (production optimized)
 RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
 
 # Copy application code
-COPY . .
+COPY ../../ .
 
 # Generate optimized autoloader (skip composer scripts to avoid running Artisan during build)
 RUN composer dump-autoload --no-scripts --optimize --classmap-authoritative
@@ -52,10 +53,10 @@ RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/bootstrap/cache
 
 # Stage 2: Production stage
-FROM php:8.4-cli-alpine AS production
+FROM php:8.4-cli-alpine3.19 AS production
 
 # Install runtime dependencies and PHP extensions
-RUN apk add --no-cache \
+RUN apk update && apk upgrade && apk add --no-cache \
     freetype \
     libjpeg-turbo \
     libpng \
@@ -66,6 +67,7 @@ RUN apk add --no-cache \
     cyrus-sasl \
     snappy \
     libsasl \
+    dumb-init \
     && apk add --no-cache --virtual .build-deps \
         build-base \
         freetype-dev \
@@ -100,7 +102,7 @@ RUN echo 'opcache.memory_consumption=128' >> /usr/local/etc/php/conf.d/opcache.i
     && echo 'opcache.fast_shutdown=1' >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo 'opcache.enable_cli=1' >> /usr/local/etc/php/conf.d/opcache.ini
 
-# Production PHP configuration for scheduler
+# Production PHP configuration for queue worker
 RUN echo 'memory_limit=256M' >> /usr/local/etc/php/conf.d/php.ini
 
 # Set working directory
@@ -110,8 +112,8 @@ WORKDIR /var/www
 COPY --from=builder --chown=www-data:www-data /var/www /var/www
 
 # Copy entrypoint script from scripts
-COPY scripts/docker-entrypoint-scheduler.sh /usr/local/bin/docker-entrypoint-scheduler.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint-scheduler.sh
+COPY docker-entrypoint-queue.sh /usr/local/bin/docker-entrypoint-queue.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint-queue.sh
 
 # Create necessary directories
 RUN mkdir -p /var/www/storage/logs \
@@ -123,12 +125,12 @@ RUN mkdir -p /var/www/storage/logs \
     && chmod -R 755 /var/www/storage \
     && chmod -R 755 /var/www/bootstrap/cache
 
-# Health check for cron scheduler
+# Health check for queue worker
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ps aux | grep -q "php.*artisan.*schedule:work" || exit 1
+    CMD pgrep -f "php artisan queue:work" || exit 1
 
-# Set entrypoint
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint-scheduler.sh"]
+# Set entrypoint with dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--", "/usr/local/bin/docker-entrypoint-queue.sh"]
 
-# Start cron scheduler
-CMD ["php", "artisan", "schedule:work", "--verbose"]
+# Start queue worker
+CMD ["php", "artisan", "queue:work", "--verbose", "--sleep=3", "--tries=3"]
