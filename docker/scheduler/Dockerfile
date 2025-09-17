@@ -55,7 +55,7 @@ RUN chown -R www-data:www-data /var/www \
 FROM php:8.4-cli-alpine3.19 AS production
 
 # Install runtime dependencies and PHP extensions
-RUN apk add --no-cache \
+RUN apk update && apk upgrade && apk add --no-cache \
     freetype \
     libjpeg-turbo \
     libpng \
@@ -66,6 +66,7 @@ RUN apk add --no-cache \
     cyrus-sasl \
     snappy \
     libsasl \
+    dumb-init \
     && apk add --no-cache --virtual .build-deps \
         build-base \
         freetype-dev \
@@ -110,7 +111,7 @@ WORKDIR /var/www
 COPY --from=builder --chown=www-data:www-data /var/www /var/www
 
 # Copy entrypoint script from scripts
-COPY docker-entrypoint-scheduler.sh /usr/local/bin/docker-entrypoint-scheduler.sh
+COPY docker/scheduler/docker-entrypoint-scheduler.sh /usr/local/bin/docker-entrypoint-scheduler.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint-scheduler.sh
 
 # Create necessary directories

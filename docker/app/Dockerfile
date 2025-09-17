@@ -120,9 +120,9 @@ COPY --from=builder --chown=www-data:www-data /var/www /var/www
 
 # Prepare scripts directory and copy entrypoint + helper
 RUN mkdir -p /var/www/scripts
-COPY wait-for-db.sh /var/www/scripts/wait-for-db.sh
+COPY docker/app/wait-for-db.sh /var/www/scripts/wait-for-db.sh
 RUN chmod +x /var/www/scripts/wait-for-db.sh
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker/app/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create necessary directories

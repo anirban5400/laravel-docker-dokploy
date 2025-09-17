@@ -112,7 +112,7 @@ WORKDIR /var/www
 COPY --from=builder --chown=www-data:www-data /var/www /var/www
 
 # Copy entrypoint script from scripts
-COPY docker-entrypoint-queue.sh /usr/local/bin/docker-entrypoint-queue.sh
+COPY docker/queue/docker-entrypoint-queue.sh /usr/local/bin/docker-entrypoint-queue.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint-queue.sh
 
 # Create necessary directories
